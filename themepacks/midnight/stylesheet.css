@@ -118,7 +118,8 @@ center[style="background: white;border: #DEDEDE solid 1px;"],
 tr,
 td,
 th,
-#votesBalance,
+#votesBalance, 
+#news,
 .paginator a.active,
 .paginator a:hover,
 .topic-list-item,
@@ -312,6 +313,7 @@ tr.e,
 td.v,
 tr.v,
 #votesBalance,
+#news,
 .expand_button,
 #userContent blockquote,
 .tippy-box[data-theme~="vk"],
@@ -326,11 +328,11 @@ tr.v,
 }
 
 .content_title_expanded {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/flex_arrow_open.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/flex_arrow_open.png") !important;
 }
 
 .content_title_unexpanded {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/flex_arrow_shut.gif") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/flex_arrow_shut.gif") !important;
 }
 
 .ovk-video>.preview,
@@ -357,17 +359,17 @@ tr.h {
 
 .page_yellowheader {
     color: #c6d2e8;
-    background-image: url("/themepack/midnight/0.0.3.3/resource/header_purple.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/header_purple.png") !important;
     background-color: #231f34;
     border-color: #231f34;
 }
 
 .page_header {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/header.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/header.png") !important;
 }
 
 .page_custom_header {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/header_custom.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/header_custom.png") !important;
 }
 
 .page_yellowheader span,
@@ -406,11 +408,11 @@ select,
 }
 
 input[type="checkbox"] {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/checkbox.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/checkbox.png") !important;
 }
 
 input[type="radio"] {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/radio.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/radio.png") !important;
 }
 
 .header_navigation .link, .header_navigation .header_divider_stick {
@@ -418,20 +420,20 @@ input[type="radio"] {
 }
 
 .heart {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/like.gif") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/like.gif") !important;
 }
 
 .pinned-mark,
 .post-author .pin {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/pin.png") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/pin.png") !important;
 }
 
 .repost-icon {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/published.gif") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/published.gif") !important;
 }
 
 .post-author .delete {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/input_clear.gif") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/input_clear.gif") !important;
 }
 
 .user-alert {
@@ -464,7 +466,7 @@ input[type="radio"] {
 }
 
 #backdropEditor {
-    background-image: url("/themepack/midnight/0.0.3.3/resource/backdrop-editor.gif") !important;
+    background-image: url("/themepack/midnight/0.0.4.0/resource/backdrop-editor.gif") !important;
     border-color: #473e66 !important;
 }
 
@@ -632,4 +634,29 @@ ul {
 #upload_container .upload_container_element {
     border: 1px solid #383052;
     background: #1e1b2a;
+}
+
+#docs_page_wrapper .docs_page_search {
+    background: #1d1a27;
+    border-bottom: #2a2841 solid 1px;
+}
+
+.docListViewItem {
+    border-bottom-color: #2a2841;
+}
+
+.docListViewItem:hover, .attachButton:hover {
+    background: #271c48;
+}
+
+.docListViewItem .doc_icon {
+    background: #33255e;
+}
+
+.docListViewItem .doc_content b {
+    color: #7c94c5;
+}
+
+.doc_icon.no_image span::before {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAkAAAAKCAYAAABmBXS+AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsAAAA7AAWrWiQkAAABXSURBVChTY2RAAoFe9ZuEBOR93314uHn9tkY/qDADE5QGA5ACZBoGUBThAkQpYkyOmvcfysYJiDMJROAzbe6yJEZ4EGBTCFIAolHCCVkhTAFWgGkiAwMAzxkZ3qVQ7YEAAAAASUVORK5CYII=");
 }

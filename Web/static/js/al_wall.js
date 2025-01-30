@@ -900,7 +900,7 @@ tippy.delegate('body', {
 
         that._likesList.items.forEach(item => {
             final_template.find('.like_tooltip_body .like_tooltip_body_grid').append(`
-                <a href='/id${item.id}'><img src='${item.photo_50}' alt='.'></a>
+                <a title="${escapeHtml(item.first_name + " " + item.last_name)}" href='/id${item.id}'><img src='${item.photo_50}' alt='.'></a>
             `)
         })
         that.setContent(final_template.nodes[0].outerHTML)
@@ -924,7 +924,8 @@ u(document).on("click", "#editPost", async (e) => {
     const target = u(e.target)
     const post = target.closest("table")
     const content = post.find(".post-content")
-    const edit_place = post.find('.post-edit')
+    const edit_place_l = post.find('.post-edit')
+    const edit_place = u(edit_place_l.first())
     const id = post.attr('data-id').split('_')
 
     let type = 'post'
@@ -998,6 +999,10 @@ u(document).on("click", "#editPost", async (e) => {
                                         <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" />
                                         ${tr('audio')}
                                     </a>
+                                    <a id="__documentAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" />
+                                        ${tr('document')}
+                                    </a>
                                     ${type == 'post' ? `<a id="__notesAttachment">
                                         <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-srt.png" />
                                         ${tr('note')}
@@ -1034,7 +1039,10 @@ u(document).on("click", "#editPost", async (e) => {
         // horizontal attachments
         api_post.attachments.forEach(att => {
             const type = att.type
-            const aid = att[type].owner_id + '_' + att[type].id
+            let aid = att[type].owner_id + '_' + att[type].id
+            if(att[type] && att[type].access_key) {
+                aid += "_" + att[type].access_key
+            }
 
             if(type == 'video' || type == 'photo') {
                 let preview = ''
@@ -2579,7 +2587,7 @@ async function changeStatus() {
         document.querySelector("#page_status_text").innerHTML = `[ ${tr("change_status")} ]`;
         document.querySelector("#page_status_text").className = "edit_link page_status_edit_button";
     } else {
-        document.querySelector("#page_status_text").innerHTML = status;
+        document.querySelector("#page_status_text").innerHTML = escapeHtml(status);
         document.querySelector("#page_status_text").className = "page_status page_status_edit_button";
     }
 
@@ -2587,3 +2595,360 @@ async function changeStatus() {
     document.status_popup_form.submit.innerHTML = tr("send");
     document.status_popup_form.submit.disabled = false;
 }
+
+const tplMapIcon = `<svg class="map_svg_icon" width="13" height="12" viewBox="0 0 3.4395833 3.175">
+<g><path d="M 1.7197917 0.0025838216 C 1.1850116 0.0049444593 0.72280427 0.4971031 0.71520182 1.0190592 C 0.70756921 1.5430869 1.7223755 3.1739665 1.7223755 3.1739665 C 1.7223755 3.1739665 2.7249195 1.5439189 2.7243815 0.99632161 C 2.7238745 0.48024825 2.2492929 0.00024648357 1.7197917 0.0025838216 z M 1.7197917 0.52606608 A 0.48526123 0.48526123 0 0 1 2.2050334 1.0113078 A 0.48526123 0.48526123 0 0 1 1.7197917 1.4965495 A 0.48526123 0.48526123 0 0 1 1.23455 1.0113078 A 0.48526123 0.48526123 0 0 1 1.7197917 0.52606608 z " /></g>
+</svg>`
+
+u(document).on('click', "#__geoAttacher", async (e) => {
+    const form = u(e.target).closest('#write')
+    const buttons = form.find('.post-buttons')
+
+    let current_coords = [54.51331, 36.2732]
+    let currentMarker  = null
+    const getCoords = async () => {
+        const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                resolve([position.coords.latitude, position.coords.longitude])
+            }, () => {
+                resolve([54.51331, 36.2732])
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0,
+            })
+        })
+
+        return pos
+    }
+
+    current_coords = await getCoords()
+
+    const geo_msg = new CMessageBox({
+        title: tr('attach_geotag'),
+        body: `<div id=\"osm-map\" style='height:75vh;'></div>`,
+        buttons: [tr('attach'), tr('cancel')],
+        callbacks: [() => {
+            if(!currentMarker) {
+                return
+            }
+            
+            const geo_name = $(`#geo-name`).html()
+            if(geo_name == '') {
+                return
+            }
+
+            const marker = {
+                lat: currentMarker._latlng.lat,
+                lng: currentMarker._latlng.lng,
+                name: geo_name
+            }
+            buttons.find(`input[name='geo']`).nodes[0].value = JSON.stringify(marker)
+            buttons.find(`.post-has-geo`).html(`
+                ${tplMapIcon}
+                <span>${escapeHtml(geo_name)}</span>
+                <div id="small_remove_button"></div>
+            `)
+        }, () => {}]
+    })
+
+    // by n1rwana
+    const markerLayers = L.layerGroup()
+    const map = L.map(u('#osm-map').nodes[0], {
+        center: current_coords,
+        zoom: 10,
+        attributionControl: false,
+        width: 800
+    })
+    markerLayers.addTo(map)
+
+    map.on('click', async (e) => {
+        const lat = e.latlng.lat
+        const lng = e.latlng.lng
+
+        if(currentMarker) map.removeLayer(currentMarker);
+
+        const marker_fetch_req = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2`)
+        const marker_fetch = await marker_fetch_req.json()
+
+        markerLayers.clearLayers()
+        currentMarker = L.marker([lat, lng]).addTo(map)
+
+        let marker_name = marker_fetch && marker_fetch.display_name ? short_geo_name(marker_fetch.address) : tr('geotag')
+        const content = `<span id="geo-name">${marker_name}</span>`;
+
+        currentMarker.bindPopup(content).openPopup()
+        markerLayers.addLayer(currentMarker)
+    })
+
+    const geocoderControl = L.Control.geocoder({
+        defaultMarkGeocode: false,
+    }).addTo(map)
+
+    geocoderControl.on('markgeocode', function (e) {
+        console.log(e.geocode.properties)
+        const lat = e.geocode.properties.lat
+        const lng = e.geocode.properties.lon
+        const name = e.geocode.properties?.display_name ? short_geo_name(e.geocode.properties?.address) : tr('geotag')
+
+        if(currentMarker) map.removeLayer(currentMarker)
+
+        currentMarker = L.marker([lat, lng]).addTo(map)
+        currentMarker.bindPopup(`<span id="geo-name">${escapeHtml(name)}</span>`).openPopup()
+
+        marker = {
+            lat: lat,
+            lng: lng,
+            name: name
+        };
+        map.setView([lat, lng], 15);
+    })
+
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map)
+
+    geo_msg.getNode().nodes[0].style = 'width:90%'
+    setTimeout(function(){ map.invalidateSize()}, 100)
+})
+
+u(document).on('click', '.post-has-geo #small_remove_button', (e) => {
+    const form = u(e.target).closest('#write')
+    const geo  = form.find('.post-has-geo')
+    geo.remove()
+    form.find(`input[name='geo']`).nodes[0].value = ''
+})
+
+u(document).on('click', '#geo-name', (e) => {
+    const current_value = escapeHtml(e.target.innerHTML)
+    const msg = new CMessageBox({
+        title: tr('change_geo_name'),
+        unique_name: 'geo_change_name_menu',
+        body: `
+            <div>
+                <input type="text" maxlength="255" name="final_value" placeholder="${tr('change_geo_name_new')}" value="${current_value}">
+            </div>
+        `,
+        buttons: [tr('save'), tr('cancel')],
+        callbacks: [() => {
+            const new_value = u(`input[name='final_value']`).nodes[0].value
+            u('#geo-name').html(escapeHtml(new_value))
+        }, Function.noop]
+    })
+    u(`input[name='final_value']`).nodes[0].focus()
+})
+
+function openGeo(data, owner_id, virtual_id) {
+    MessageBox(tr("geotag"), "<div id=\"osm-map\"></div>", [tr("nearest_posts"), tr("close")], [async () => {
+        const posts = await OVKAPI.call('wall.getNearby', {owner_id: owner_id, post_id: virtual_id})
+        openNearPosts(posts)
+    }, Function.noop]);
+
+    let element = document.getElementById('osm-map');
+    element.style = 'height: 80vh;';
+
+    let map = L.map(element, {attributionControl: false});
+    let target = L.latLng(data.lat, data.lng);
+    map.setView(target, 15);
+
+    let marker = L.marker(target).addTo(map);
+    marker.bindPopup(escapeHtml(data.name ?? tr("geotag"))).openPopup();
+
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    $(".ovk-diag-cont").width('80%');
+    setTimeout(function(){ map.invalidateSize()}, 100);
+}
+
+function tplPost(post) {
+    return `<a style="color: inherit; display: block; margin-bottom: 8px;" href="${post.url}">
+            <table border="0" style="font-size: 11px;" class="post">
+                <tbody>
+                    <tr>
+                        <td width="54" valign="top">
+                            <a href="${post.owner.domain}">
+                                <img src="${post.owner.photo_50}" width="50">
+                            </a>
+                        </td>
+                        <td width="100%" valign="top">
+                            <div class="post-author">
+                                <a href="${post.owner.domain}"><b>${escapeHtml(post.owner.name)}</b></a>
+                                ${post.owner.verified ? `<img class="name-checkmark" src="/assets/packages/static/openvk/img/checkmark.png">` : ""}
+                                <br>
+                                <a href="${post.url}" class="date">
+                                    ${post.created}
+                                </a>
+                            </div>
+                            <div class="post-content">
+                                <div class="text">
+                                    ${escapeHtml(post.message)}
+                                </div>
+                                <div style="padding: 4px;">
+                                    <div style="border-bottom: #ECECEC solid 1px;"></div>
+                                    <div style="cursor: pointer; padding: 4px;">
+                                        ${tplMapIcon}
+                                        ${escapeHtml(post.geo.name)}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+       </a>`;
+}
+
+function openNearPosts(posts) {
+    if (posts.length > 0) {
+        let MsgTxt = "<div id=\"osm-map\"></div>";
+        MsgTxt += `<br /><br /><center style='color: grey;'>${tr('shown_last_nearest_posts', 25)}</center>`;
+
+        MessageBox(tr('nearest_posts'), MsgTxt, ["OK"], [Function.noop]);
+
+        let element = document.getElementById('osm-map');
+        element.style = 'height: 80vh;';
+
+        let markerLayers = L.layerGroup();
+        let map = L.map(element, {attributionControl: false});
+
+        markerLayers.addTo(map);
+
+        let markersBounds = [];
+        let coords = [];
+
+        posts.forEach((post) => {
+            if (coords.includes(`${post.geo.lat} ${post.geo.lng}`)) {
+                markerLayers.getLayers().forEach((marker) => {
+                    if (marker.getLatLng().lat === post.geo.lat && marker.getLatLng().lng === post.geo.lng) {
+                        let content = marker.getPopup()._content += tplPost(post);
+                        if (!content.startsWith(`<div style="max-height: 300px; overflow-y: auto;">`))
+                            content = `<div style="max-height: 300px; overflow-y: auto;">${content}`;
+
+                        marker.getPopup().setContent(content);
+                    }
+                });
+            } else {
+                let marker = L.marker(L.latLng(post.geo.lat, post.geo.lng)).addTo(map);
+                marker.bindPopup(tplPost(post));
+                markerLayers.addLayer(marker);
+                markersBounds.push(marker.getLatLng());
+            }
+
+            coords.push(`${post.geo.lat} ${post.geo.lng}`);
+        })
+
+        let bounds = L.latLngBounds(markersBounds);
+        map.fitBounds(bounds);
+
+        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        $(".ovk-diag-cont").width('80%');
+        setTimeout(function () {
+            map.invalidateSize()
+        }, 100);
+    } else {
+        MessageBox(tr('nearest_posts'), `<center style='color: grey;'>${tr('no_nearest_posts')}</center>`, ["OK"], [Function.noop]);
+    }
+}
+
+u(document).on('click', '#_bl_toggler', async (e) => {
+    e.preventDefault()
+
+    const target = u(e.target)
+    const val = Number(target.attr('data-val'))
+    const id  = Number(target.attr('data-id'))
+    const name = target.attr('data-name')
+
+    const fallback = (e) => {
+        fastError(e.message)
+        target.removeClass('lagged')
+    }
+
+    if(val == 1) {
+        const msg = new CMessageBox({
+            title: tr('addition_to_bl'),
+            body: `<span>${escapeHtml(tr('adding_to_bl_sure', name))}</span>`,
+            buttons: [tr('yes'), tr('no')],
+            callbacks: [async () => {
+                try {
+                    target.addClass('lagged')
+                    await window.OVKAPI.call('account.ban', {'owner_id': id})
+                    window.router.route(location.href)
+                } catch(e) {
+                    fallback(e)
+                }
+            }, () => Function.noop]
+        })
+    } else {
+        try {
+            target.addClass('lagged')
+            await window.OVKAPI.call('account.unban', {'owner_id': id})
+            window.router.route(location.href)
+        } catch(e) {
+            fallback(e)
+        }
+    }
+})
+
+/* Additional fields */
+
+u(document).on("click", "#additional_field_append", (e) => {
+    let iterator = 0
+    if(u(`table[data-iterator]`).last()) {
+        iterator = Number(u(`table[data-iterator]`).last().dataset.iterator) + 1
+    }
+
+    if(iterator >= window.openvk.max_add_fields) {
+        return
+    }
+
+    u('.edit_field_container_inserts').append(`
+        <table data-iterator="${iterator}" class="outline_table edit_field_container_item" width="80%" border="0" align="center">
+            <tbody>
+                <tr>
+                    <td width="150">${tr("additional_field_name")}</td>
+                    <td><input name="name_${iterator}" type="text" maxlength="50"></td>
+                    <td><div id="small_remove_button"></div></td>
+                </tr>
+                <tr>
+                    <td valign="top">${tr("additional_field_text")}</td>
+                    <td><textarea name="text_${iterator}" maxlength="1000"></textarea></td><td></td>
+                </tr>
+                <tr>
+                    <td>${tr("additional_field_place")}</td>
+                    <td>
+                        <select name="place_${iterator}">
+                            <option value="0">${tr("additional_field_place_contacts")}</option>
+                            <option value="1" selected>${tr("additional_field_place_interests")}</option>
+                        </select>
+                    </td><td></td>
+                </tr>
+            </tbody>
+        </table>
+    `)
+    u(`.edit_field_container_item[data-iterator='${iterator}'] input[type="text"]`).nodes[0].focus()
+})
+
+u(document).on("click", ".edit_field_container_item #small_remove_button", (e) => {
+    let iterator = 0
+    u(e.target).closest('table').remove()
+    u(".edit_field_container_inserts .edit_field_container_item").nodes.forEach(node => {
+        node.setAttribute('data-iterator', iterator)
+        iterator += 1
+    })
+})
+
+u(document).on("submit", "#additional_fields_form", (e) => {
+    u(`.edit_field_container_item input, .edit_field_container_item textarea`).nodes.forEach(node => {
+        if(node.value == "" || node.value == " ") {
+            e.preventDefault()
+            node.focus()
+            return
+        }
+    }) 
+})

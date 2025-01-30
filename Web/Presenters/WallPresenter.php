@@ -49,6 +49,9 @@ final class WallPresenter extends OpenVKPresenter
         if ($owner->isBanned() || !$owner->canBeViewedBy($this->user->identity))
             $this->flashFail("err", tr("error"), tr("forbidden"));
 
+        if ($user > 0 && $owner->isDeleted())
+            $this->flashFail("err", tr("error"), tr("forbidden"));
+
         if(is_null($this->user)) {
             $canPost = false;
         } else if($user > 0) {
@@ -294,7 +297,7 @@ final class WallPresenter extends OpenVKPresenter
         if(!empty($this->postParam("vertical_attachments"))) {
             $vertical_attachments_array = array_slice(explode(",", $this->postParam("vertical_attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
             if(sizeof($vertical_attachments_array) > 0) {
-                $vertical_attachments = parseAttachments($vertical_attachments_array, ['audio', 'note']);
+                $vertical_attachments = parseAttachments($vertical_attachments_array, ['audio', 'note', 'doc']);
             }
         }
 
@@ -309,6 +312,19 @@ final class WallPresenter extends OpenVKPresenter
             $this->flashFail("err", tr("failed_to_publish_post"), "Poll format invalid");
         }
 
+        $geo = NULL;
+
+        if (!is_null($this->postParam("geo")) && $this->postParam("geo") != "") {
+            $geo = json_decode($this->postParam("geo"), true, JSON_UNESCAPED_UNICODE);
+            if($geo["lat"] && $geo["lng"] && $geo["name"]) {
+                $latitude = number_format((float) $geo["lat"], 8, ".", '');
+                $longitude = number_format((float) $geo["lng"], 8, ".", '');
+                if($latitude > 90 || $latitude < -90 || $longitude > 180 || $longitude < -180) {
+                    $this->flashFail("err", tr("error"), "Invalid latitude or longitude");
+                }
+            }
+        }
+        
         if(empty($this->postParam("text")) && sizeof($horizontal_attachments) < 1 && sizeof($vertical_attachments) < 1 && !$poll)
             $this->flashFail("err", tr("failed_to_publish_post"), tr("post_is_empty_or_too_big"));
         
@@ -332,6 +348,11 @@ final class WallPresenter extends OpenVKPresenter
             if($should_be_suggested)
                 $post->setSuggested(1);
             
+            if ($geo) {
+                $post->setGeo($geo);
+                $post->setGeo_Lat($latitude);
+                $post->setGeo_Lon($longitude);
+            }
             $post->save();
         } catch (\LengthException $ex) {
             $this->flashFail("err", tr("failed_to_publish_post"), tr("post_is_too_big"));

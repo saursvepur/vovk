@@ -22,17 +22,29 @@ final class UserPresenter extends OpenVKPresenter
     function __construct(Users $users)
     {
         $this->users = $users;
-
+        
         parent::__construct();
     }
     
     function renderView(int $id): void
     {
         $user = $this->users->get($id);
+
         if(!$user || $user->isDeleted() || !$user->canBeViewedBy($this->user->identity)) {
             if(!is_null($user) && $user->isDeactivated()) {
                 $this->template->_template = "User/deactivated.xml";
                 
+                $this->template->user = $user;
+            } else if(!is_null($user) && $this->user->identity && $this->user->identity->isBlacklistedBy($user)) {
+                $this->template->_template = "User/blacklisted.xml";
+
+                $this->template->blacklist_status = $user->isBlacklistedBy($this->user->identity);
+                $this->template->ignore_status = $user->isIgnoredBy($this->user->identity);
+                $this->template->user = $user;
+            } else if(!is_null($user) && $user->isBlacklistedBy($this->user->identity)) {
+                $this->template->_template = "User/blacklisted_pov.xml";
+                
+                $this->template->ignore_status = $user->isIgnoredBy($this->user->identity);
                 $this->template->user = $user;
             } else if(!is_null($user) && !$user->canBeViewedBy($this->user->identity)) {
                 $this->template->_template = "User/private.xml";
@@ -52,11 +64,13 @@ final class UserPresenter extends OpenVKPresenter
             $this->template->audios      = (new Audios)->getRandomThreeAudiosByEntityId($user->getId());
             $this->template->audiosCount = (new Audios)->getUserCollectionSize($user);
             $this->template->audioStatus = $user->getCurrentAudioStatus();
+            $this->template->additionalFields = $user->getAdditionalFields(true);
 
             $this->template->user = $user;
 
             if($id !== $this->user->id) {
                 $this->template->ignore_status = $user->isIgnoredBy($this->user->identity);
+                $this->template->blacklist_status = $user->isBlacklistedBy($this->user->identity);
             }
         }
     }
@@ -238,13 +252,14 @@ final class UserPresenter extends OpenVKPresenter
                 else
                     $user->setWebsite((!parse_url($website, PHP_URL_SCHEME) ? "https://" : "") . $website);
             } elseif($_GET['act'] === "interests") {
-                $user->setInterests(empty($this->postParam("interests")) ? NULL : ovk_proc_strtr($this->postParam("interests"), 300));
-                $user->setFav_Music(empty($this->postParam("fav_music")) ? NULL : ovk_proc_strtr($this->postParam("fav_music"), 300));
-                $user->setFav_Films(empty($this->postParam("fav_films")) ? NULL : ovk_proc_strtr($this->postParam("fav_films"), 300));
-                $user->setFav_Shows(empty($this->postParam("fav_shows")) ? NULL : ovk_proc_strtr($this->postParam("fav_shows"), 300));
-                $user->setFav_Books(empty($this->postParam("fav_books")) ? NULL : ovk_proc_strtr($this->postParam("fav_books"), 300));
-                $user->setFav_Quote(empty($this->postParam("fav_quote")) ? NULL : ovk_proc_strtr($this->postParam("fav_quote"), 300));
-                $user->setAbout(empty($this->postParam("about")) ? NULL : ovk_proc_strtr($this->postParam("about"), 300));
+                $user->setInterests(empty($this->postParam("interests")) ? NULL : ovk_proc_strtr($this->postParam("interests"), 1000));
+                $user->setFav_Music(empty($this->postParam("fav_music")) ? NULL : ovk_proc_strtr($this->postParam("fav_music"), 1000));
+                $user->setFav_Films(empty($this->postParam("fav_films")) ? NULL : ovk_proc_strtr($this->postParam("fav_films"), 1000));
+                $user->setFav_Shows(empty($this->postParam("fav_shows")) ? NULL : ovk_proc_strtr($this->postParam("fav_shows"), 1000));
+                $user->setFav_Books(empty($this->postParam("fav_books")) ? NULL : ovk_proc_strtr($this->postParam("fav_books"), 1000));
+                $user->setFav_Quote(empty($this->postParam("fav_quote")) ? NULL : ovk_proc_strtr($this->postParam("fav_quote"), 1000));
+                $user->setFav_Games(empty($this->postParam("fav_games")) ? NULL : ovk_proc_strtr($this->postParam("fav_games"), 1000));
+                $user->setAbout(empty($this->postParam("about")) ? NULL : ovk_proc_strtr($this->postParam("about"), 1000));
             } elseif($_GET["act"] === "backdrop") {
                 if($this->postParam("subact") === "remove") {
                     $user->unsetBackDropPictures();
@@ -282,10 +297,46 @@ final class UserPresenter extends OpenVKPresenter
                 $this->returnJson([
                     "success" => true
                 ]);
+            } elseif($_GET['act'] === "additional") {
+                $maxAddFields = ovkGetQuirk("users.max-fields");
+                $items = [];
+
+                for($i = 0; $i < $maxAddFields; $i++) {
+                    if(!$this->postParam("name_".$i)) {
+                        continue;
+                    }
+
+                    $items[] = [
+                        "name"  => $this->postParam("name_".$i),
+                        "text"  => $this->postParam("text_".$i),
+                        "place" => $this->postParam("place_".$i),
+                    ];
+                }
+
+                \openvk\Web\Models\Entities\UserInfoEntities\AdditionalField::resetByOwner($this->user->id);
+                foreach($items as $new_field_info) {
+                    $name = ovk_proc_strtr($new_field_info["name"], 50);
+                    $text = ovk_proc_strtr($new_field_info["text"], 1000);
+                    if(ctype_space($name) || ctype_space($text)) {
+                        continue;
+                    }
+
+                    $place = (int)($new_field_info["place"]);
+
+                    $new_field = new \openvk\Web\Models\Entities\UserInfoEntities\AdditionalField;
+                    $new_field->setOwner($this->user->id);
+                    $new_field->setName($name);
+                    $new_field->setText($text);
+                    $new_field->setPlace([0, 1][$place] ? $place : 0);
+
+                    $new_field->save();
+                }
             }
             
             try {
-                $user->save();
+                if($_GET['act'] !== "additional") {
+                    $user->save();
+                }
             } catch(\PDOException $ex) {
                 if($ex->getCode() == 23000)
                     $this->flashFail("err", tr("error"), tr("error_shorturl"));
@@ -297,7 +348,7 @@ final class UserPresenter extends OpenVKPresenter
         }
         
         $this->template->mode = in_array($this->queryParam("act"), [
-            "main", "contacts", "interests", "avatar", "backdrop"
+            "main", "contacts", "interests", "avatar", "backdrop", "additional"
         ]) ? $this->queryParam("act")
             : "main";
         
@@ -560,7 +611,8 @@ final class UserPresenter extends OpenVKPresenter
                     "menu_novajoj"   => "news",
                     "menu_ligiloj"   => "links",
                     "menu_standardo" => "poster",
-                    "menu_aplikoj"   => "apps"
+                    "menu_aplikoj"   => "apps",
+                    "menu_doxc"      => "docs",
                 ];
                 foreach($settings as $checkbox => $setting)
                     $user->setLeftMenuItemStatus($setting, $this->checkbox($checkbox));
@@ -578,7 +630,7 @@ final class UserPresenter extends OpenVKPresenter
 			$this->flash("succ", tr("changes_saved"), tr("changes_saved_comment"));
         }
         $this->template->mode = in_array($this->queryParam("act"), [
-            "main", "security", "privacy", "finance", "finance.top-up", "interface"
+            "main", "security", "privacy", "finance", "finance.top-up", "interface", "blacklist"
         ]) ? $this->queryParam("act")
             : "main";
 
@@ -591,6 +643,19 @@ final class UserPresenter extends OpenVKPresenter
 
             $this->template->qrCodeType = substr($qrCode[0], 5);
             $this->template->qrCodeData = $qrCode[1];
+        } else if($this->template->mode === "blacklist") {
+            $page   = (int)($this->queryParam('p') ?? 1);
+            $count  = 10;
+            $offset = ($page - 1) * $count;
+
+            $this->template->blSize  = $this->user->identity->getBlacklistSize();
+            $this->template->blItems = $this->user->identity->getBlacklist($offset, $count);
+            $this->template->paginatorConf = (object) [
+                "count"   => $this->template->blSize,
+                "page"    => $page,
+                "amount"  => sizeof($this->template->blItems),
+                "perPage" => OPENVK_DEFAULT_PER_PAGE,
+            ];
         }
         
         $this->template->user   = $user;
@@ -728,7 +793,7 @@ final class UserPresenter extends OpenVKPresenter
             $this->flashFail("err", tr("failed_to_tranfer_points"), tr("message_is_too_long"));
 
         $receiver = $this->users->getByAddress($receiverAddress);
-        if(!$receiver)
+        if(!$receiver || !$receiver->canBeViewedBy($this->user->identity))
             $this->flashFail("err", tr("failed_to_tranfer_points"), tr("receiver_not_found"));
 
         if($this->user->identity->getCoins() < $value)

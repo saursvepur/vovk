@@ -2,9 +2,11 @@
 
 _[Русский](README_RU.md)_
 
-**OpenVK** is an attempt to create a simple CMS that ~~cosplays~~ imitates old VKontakte. Code provided here is not stable yet.
+**OpenVK** is an attempt to create a simple CMS that ~~cosplays~~ imitates old VKontakte. Code provided here is not stable yet. 
 
-VKontakte belongs to VK (formerly Mail.ru Group).
+This is fan project, not affiliated in any way with VKontakte and it's company VK Ltd. Below is the same message in russian.
+
+OpenVK является любительской разработкой и никак не связан с ВКонтакте и компанией ООО "VK"
 
 To be honest, we don't know whether if it even works. However, this version is maintained and we will be happy to accept your bugreports [in our bug tracker](https://github.com/openvk/openvk/projects/1). You should also be able to submit them using [ticketing system](https://ovk.to/support?act=new) (you will need an OpenVK account for this).
 
@@ -36,7 +38,7 @@ Here is our minimum hardware recommendation:
 
 ### Installation procedure
 
-1. Install PHP 7.4, web-server, Composer, Node.js, NPM and [Chandler](https://github.com/openvk/chandler)
+1. Install PHP 8.2, web-server, Composer, Node.js, NPM and [Chandler](https://github.com/openvk/chandler)
 
 * PHP 8 is still being tested; the functionality of the engine on this version of PHP is not yet guaranteed.
 
@@ -94,7 +96,7 @@ You may reach out to us via:
 * [GitHub Discussions](https://github.com/openvk/openvk/discussions)
 * Matrix Chat: #openvk:matrix.org
 
-**Attention**: bug tracker, board, Telegram and Matrix chat are public places, ticketing system is being served by volunteers. If you need to report something that should not be immediately disclosed to general public (for instance, a vulnerability), please contact us directly via this email: **openvk [at] tutanota [dot] com**
+**Attention**: bug tracker, board, Telegram and Matrix chat are public places, ticketing system is being served by volunteers. If you need to report something that should not be immediately disclosed to general public (for instance, a vulnerability), please contact us directly via this email: **contact [at] ovk [dot] to**
 
 <a href="https://codeberg.org/OpenVK/openvk">
     <img alt="Get it on Codeberg" src="https://codeberg.org/Codeberg/GetItOnCodeberg/media/branch/main/get-it-on-blue-on-white.png" height="60">

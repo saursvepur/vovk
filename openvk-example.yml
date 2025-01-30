@@ -26,6 +26,9 @@ openvk:
             photoSaving: "quick"
         videos:
             disableUploading: false
+        docs:
+            maxSize: 10 # in megabytes
+            allowedFormats: ["jpg", "jpeg", "png", "gif", "webp", "psd", "aep", "docx", "doc", "odt", "txt", "md", "pptx", "ppt", "xls", "xlsx", "pdf", "djvu", "fb2", "ps", "apk", "zip", "7z", "mp4", "avi", "mp3", "flac"]
         apps:
             withdrawTax: 8
         security:
@@ -42,6 +45,9 @@ openvk:
                 maxViolations: 50
                 maxViolationsAge: 120
                 autoban: true
+        blacklists:
+            limit: 100
+            applyToAdmins: true
         registration:
             enable: true
             disablingReason: ""

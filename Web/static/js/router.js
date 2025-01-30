@@ -102,6 +102,8 @@ window.router = new class {
         } else {
             if(u('.page_header').hasClass('search_expanded_at_all')) {
                 u('.page_header').removeClass('search_expanded_at_all').removeClass('search_expanded')
+            } else {
+                u('.page_header').removeClass('search_expanded')
             }
         }
         
@@ -161,6 +163,10 @@ window.router = new class {
         }
 
         if(url.indexOf('hash=') != -1) {
+            return false
+        }
+
+        if(url.indexOf('#close') != -1) {
             return false
         }
 
@@ -234,6 +240,11 @@ window.router = new class {
 }
 
 u(document).on('click', 'a', async (e) => {
+    if(e.defaultPrevented) {
+        console.log('AJAX | Skipping because default is prevented')
+        return
+    }
+    
     const target = u(e.target).closest('a')
     const dom_url = target.attr('href')
     const id = target.attr('id')
@@ -289,13 +300,13 @@ u(document).on('click', 'a', async (e) => {
 })
 
 u(document).on('submit', 'form', async (e) => {
+    if(e.defaultPrevented) {
+        return
+    }
+  
     if(u('#ajloader').hasClass('shown')) {
         e.preventDefault()
         return
-    }
-
-    if((localStorage.getItem('ux.disable_ajax_routing') ?? 0) == 1 || window.openvk.current_id == 0) {
-        return false
     }
 
     if(window.openvk.disable_ajax == 1) {
@@ -305,6 +316,10 @@ u(document).on('submit', 'form', async (e) => {
     if(e.target.closest('#write')) {
         const target = u(e.target)
         collect_attachments_node(target)
+    }
+
+    if((localStorage.getItem('ux.disable_ajax_routing') ?? 0) == 1 || window.openvk.current_id == 0) {
+        return false
     }
 
     u('#ajloader').addClass('shown')
