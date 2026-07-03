@@ -210,7 +210,8 @@
             {/if}
         </div>
         <br />
-        <div n:if="$thisUser != NULL && $thisUser->getId() != $user->getId() && $user->getPrivacyPermission('friends.read', $thisUser ?? NULL) && $commonFriendsCount = $user->getCommonFriendsCount($thisUser) > 0">
+        <div n:if="$thisUser != NULL && $thisUser->getId() != $user->getId() && $user->getPrivacyPermission('friends.read', $thisUser ?? NULL) && $user->getCommonFriendsCount($thisUser) > 0">
+            {var $commonFriendsCount = $user->getCommonFriendsCount($thisUser)}
             <div class="content_title_expanded" onclick="hidePanel(this, {$commonFriendsCount});">
                 {_friends_common}
             </div>
